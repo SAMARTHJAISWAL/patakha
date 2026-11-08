@@ -76,14 +76,33 @@ body {
   padding: 18px 20px 8px;
 }
 .brand {
+  position: relative;
   display: inline-flex;
   align-items: baseline;
   gap: 12px;
   color: inherit;
   text-decoration: none;
   border-radius: 8px;
-  padding: 2px 4px;
-  margin: -2px -4px;
+  padding: 2px 4px 8px;
+  margin: -2px -4px -8px;
+}
+/* One slim saffron line that slides in under the whole title (both names) on hover or focus. */
+.brand::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  bottom: 0;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--accent);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.25s ease;
+}
+.brand:hover::after,
+.brand:focus-visible::after {
+  transform: scaleX(1);
 }
 .brand .latin {
   font: 400 2rem/1 var(--display);
@@ -92,12 +111,6 @@ body {
 .brand .deva {
   font: 400 1.75rem/1 var(--deva);
   color: var(--accent);
-}
-.brand:hover .latin,
-.brand:focus-visible .latin {
-  text-decoration: underline;
-  text-decoration-thickness: 2px;
-  text-underline-offset: 6px;
 }
 .tagline {
   margin: 0;
@@ -685,6 +698,9 @@ dialog p {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .brand::after {
+    transition: none;
+  }
   .flash.on,
   .burst.fresh {
     animation: none;
