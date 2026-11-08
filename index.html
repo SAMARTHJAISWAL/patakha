@@ -15,10 +15,9 @@
   </head>
   <body>
     <header class="top">
-      <a class="brand" href="https://github.com/SAMARTHJAISWAL/patakha" title="patakha on GitHub">
-        <span class="deva" lang="hi">पटाखा</span>
+      <a class="brand" href="https://github.com/SAMARTHJAISWAL/patakha" title="patakha on GitHub: source, README and how it works">
         <span class="latin">patakha</span>
-        <svg class="gh" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        <span class="deva" lang="hi">पटाखा</span>
         <span class="sr-only">(source on GitHub)</span>
       </a>
       <p class="tagline">How loud is your Diwali?</p>
@@ -61,7 +60,9 @@
           <div class="tile"><dt>Average</dt><dd id="s-leq">--</dd></div>
           <div class="tile"><dt>Above 85 dB</dt><dd id="s-85">0 min</dd></div>
           <div class="tile"><dt>Outside 8–10 pm</dt><dd id="s-outside">0</dd></div>
+          <div class="tile dose"><dt>Noise dose <span class="info" title="Share of a safe day's sound exposure used so far, at the phone's position (NIOSH: 85 dB(A) for 8 hours, halving every 3 dB).">?</span></dt><dd><span id="s-dose">0%</span><span class="dose-bar" aria-hidden="true"><span id="s-dose-bar"></span></span></dd></div>
         </dl>
+        <button type="button" class="btn share" id="btn-share">Share my night</button>
       </section>
 
       <section class="card live" aria-labelledby="live-title">
@@ -78,6 +79,17 @@
           <div class="spec-axis" aria-hidden="true"><span>12 kHz</span><span>1 kHz</span><span>100 Hz</span></div>
         </div>
         <p class="spec-note">Spectrogram of the last few seconds. A bang is a bright vertical streak; a rocket's whistle is a rising line.</p>
+      </section>
+
+      <section class="card night" aria-labelledby="night-title">
+        <div class="card-head">
+          <h2 id="night-title">Your night, 10 minutes at a time</h2>
+          <ul class="key">
+            <li><span class="k-window"></span>8–10 pm</li>
+          </ul>
+        </div>
+        <canvas id="night-chart" class="night-chart" role="img" aria-label="Crackers heard in each 10 minutes of the night"></canvas>
+        <p class="night-note" id="night-note">Each bar is the number of crackers in 10 minutes, coloured by the loudest moment in it.</p>
       </section>
 
       <section class="card log" aria-labelledby="log-title">

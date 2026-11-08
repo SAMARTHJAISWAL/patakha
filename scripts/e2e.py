@@ -94,9 +94,27 @@ def part_demo(p) -> None:
     check('demo: bursts are listed', wait_for(lambda: page.locator('#bursts li').count() >= 2, 15), page.locator('#bursts li').count())
     check('demo: the loudest level is shown', 'dB' in page.locator('#s-max').inner_text(), page.locator('#s-max').inner_text())
     check('demo: the numbers are marked as a demo', page.locator('#demo-badge').is_visible())
+    dose = page.locator('#s-dose').inner_text()
+    check('demo: the noise dose is shown', dose == '<0.1%' or (dose.endswith('%') and float(dose[:-1]) > 0), dose)
+    lit = page.evaluate('''() => {
+      const c = document.getElementById('night-chart');
+      const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+      let n = 0;
+      for (let i = 0; i < d.length; i += 4) if (d[i] > 120 || d[i + 1] > 120) n++;
+      return n;
+    }''')
+    check('demo: the night chart draws bars', lit > 200, lit)
+    check('demo: the night note names the busiest 10 minutes', 'Busiest' in page.locator('#night-note').inner_text())
+    with page.expect_download() as dl:
+        page.get_by_role('button', name='Share my night').click()
+    from PIL import Image
+    card = Image.open(dl.value.path())
+    check('demo: Share my night makes a 1080 × 1350 picture', card.size == (1080, 1350) and dl.value.suggested_filename.endswith('.png'), (card.size, dl.value.suggested_filename))
     sound = page.get_by_role('button', name='Sound on')
     sound.click()
-    check('demo: sound can be turned on', page.locator('#btn-sound').get_attribute('aria-pressed') == 'true')
+    check('demo: sound can be turned on', page.locator('#btn-sound').get_attribute('aria-pressed') == 'true' and page.locator('#btn-sound').inner_text() == 'Sound off')
+    page.get_by_role('button', name='Sound off').click()
+    check('demo: and off again', page.locator('#btn-sound').get_attribute('aria-pressed') == 'false')
     page.get_by_role('button', name='Stop').click()
     check("demo: stopping returns to tonight's real count, untouched", stats(page)['crackers'] == 0 and not page.locator('#demo-badge').is_visible(), stats(page))
     page.reload()
@@ -114,6 +132,7 @@ def part_mic(p) -> None:
     page, errors = open_app(browser, viewport={'width': 1280, 'height': 900}, permissions=['microphone'])
     page.get_by_role('button', name='Start listening').click()
     check('mic: the microphone opens', wait_for(lambda: stats(page)['listening'], 8), page.locator('#error').inner_text() if page.locator('#error').is_visible() else '')
+    check('mic: the other button offers the demo', page.locator('#btn-demo').inner_text() == 'Switch to the demo' and page.locator('#btn-listen').is_hidden())
     # The fake device loops the file; one pass is 16 s.
     got = wait_for(lambda: stats(page)['ladis'] >= 1 and stats(page)['seconds'] > LENGTH + 1, 40)
     s = stats(page)
@@ -122,6 +141,11 @@ def part_mic(p) -> None:
     ladi = page.evaluate("window.__patakha.app.session.bursts.find(b => b.kind === 'ladi')")
     check('mic: every single bang is found', singles >= len(SINGLES), f'{singles} singles')
     check('mic: the ladi has about the right number of bangs', ladi and abs(ladi['count'] - LADI_N) <= 3, ladi and ladi['count'])
+    page.get_by_role('button', name='Switch to the demo').click()
+    check('mic: switching to the demo shows the demo count', wait_for(lambda: page.locator('#demo-badge').is_visible(), 5))
+    page.get_by_role('button', name='Use the microphone').click()
+    check("mic: and back shows tonight's count again", wait_for(lambda: not page.locator('#demo-badge').is_visible() and stats(page)['ladis'] >= 1, 5), stats(page))
+    page.wait_for_timeout(500)
     before = stats(page)
     page.reload()
     page.wait_for_function('window.__patakha !== undefined')
@@ -170,6 +194,11 @@ def part_page(p) -> None:
     browser = p.chromium.launch(headless=True, args=GPU, channel='chromium')
     page, errors = open_app(browser, viewport={'width': 1280, 'height': 900})
     page_errors = list(errors)  # before leaving for GitHub, whose own console is not ours
+    check('page: the title reads "patakha पटाखा", English first', page.locator('a.brand').inner_text().split() [:2] == ['patakha', 'पटाखा'], page.locator('a.brand').inner_text())
+    links = page.evaluate("[...document.querySelectorAll('a[href*=\"github.com\"]')].map(a => a.className)")
+    check('page: the title is the only link to GitHub', links == ['brand'], links)
+    fonts = page.evaluate("document.fonts.ready.then(() => [document.fonts.check('400 20px \"Rozha One\"', 'पटाखा'), document.fonts.check('800 20px \"Manrope Variable\"')])")
+    check('page: the Rozha One and Manrope fonts load', fonts == [True, True], fonts)
     brand = page.locator('a.brand')
     check('page: the title links to the repo', brand.get_attribute('href') == 'https://github.com/SAMARTHJAISWAL/patakha')
     with page.expect_navigation():
@@ -182,6 +211,11 @@ def part_page(p) -> None:
     m.locator('summary', has_text='Calibrate').click()
     m.locator('#offset').fill('125')
     check('phone: calibration changes the offset', '+5.0 dB' in m.locator('#offset-out').inner_text(), m.locator('#offset-out').inner_text())
+    m.get_by_role('button', name='Back to default').click()
+    check('phone: Back to default resets it', m.locator('#offset-out').inner_text() == '+0.0 dB', m.locator('#offset-out').inner_text())
+    m.reload()
+    m.wait_for_function('window.__patakha !== undefined')
+    check('phone: the default sticks after a reload', m.locator('#offset').input_value() == '120', m.locator('#offset').input_value())
     check('page: no console errors', not page_errors and not errs, ' | '.join((page_errors + errs)[:3]))
     browser.close()
 

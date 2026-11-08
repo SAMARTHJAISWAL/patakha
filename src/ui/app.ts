@@ -1,7 +1,9 @@
 import { AudioEngine, MicError, type Source } from '../audio/engine';
 import { DEFAULT_OFFSET } from '../dsp/meter';
 import { Session, outsideCrackerHours, parseSaved, type LoggedBurst } from '../session';
-import { bandFor, buildGauge, drawTrace, Spectrogram } from './charts';
+import { bandFor, buildGauge, drawNight, drawTrace, Spectrogram } from './charts';
+import { binNight, noiseDose } from '../night';
+import { summaryCard } from './share';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string): T => document.getElementById(id) as T;
 
@@ -240,6 +242,63 @@ export class App {
     $('stats-title').textContent = s.demo ? 'Demo night' : 'Tonight so far';
     $('s-85').textContent = minutes(s.above(85));
     $('since').textContent = s.duration > 1 ? `${minutes(s.duration)} measured` : '';
+    const dose = this.dose();
+    $('s-dose').textContent = dose > 0 && dose < 0.1 ? '<0.1%' : `${dose < 10 && dose > 0 ? dose.toFixed(1) : Math.round(dose)}%`;
+    $('s-dose-bar').style.width = `${Math.min(100, dose)}%`;
+    this.renderNight();
+  }
+
+  private dose(): number {
+    const s = this.session;
+    return s.duration > 1 ? noiseDose(s.leq, s.duration) : 0;
+  }
+
+  private bins() {
+    const s = this.session;
+    return binNight(s.bursts, s.started, Date.now());
+  }
+
+  private renderNight(): void {
+    const bins = this.bins();
+    drawNight($<HTMLCanvasElement>('night-chart'), bins, this.session.offset);
+    const busiest = bins.reduce((m, b) => (b.crackers > m.crackers ? b : m), bins[0]!);
+    $('night-note').textContent = busiest.crackers
+      ? `Busiest: ${busiest.crackers.toLocaleString()} crackers from ${new Date(busiest.start).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}. Bars are coloured by the loudest moment in each 10 minutes.`
+      : 'Each bar is the number of crackers in 10 minutes, coloured by the loudest moment in it.';
+  }
+
+  private async share(): Promise<void> {
+    const s = this.session;
+    const btn = $<HTMLButtonElement>('btn-share');
+    btn.disabled = true;
+    try {
+      const blob = await summaryCard({
+        crackers: s.totals.crackers,
+        ladis: s.totals.ladis,
+        long: s.totals.long,
+        loudest: Number.isFinite(s.meter.maxFast) && s.meter.maxFast > 0 ? s.meter.maxFast : null,
+        loudestAt: s.maxFastAt || null,
+        average: s.duration > 1 ? s.leq : null,
+        dose: this.dose(),
+        bins: this.bins(),
+        offset: s.offset,
+        demo: s.demo,
+      });
+      const file = new File([blob], `patakha-${s.demo ? 'demo' : localIso(s.started).slice(0, 10)}.png`, { type: 'image/png' });
+      if (navigator.canShare?.({ files: [file] }) && matchMedia('(pointer: coarse)').matches) {
+        await navigator.share({ files: [file], title: 'My Diwali night', text: `${s.totals.crackers} crackers heard tonight, measured with patakha.` });
+      } else {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(file);
+        a.download = file.name;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+      }
+    } catch (e) {
+      if ((e as DOMException).name !== 'AbortError') this.showError(`Could not make the picture: ${(e as Error).message}`);
+    } finally {
+      btn.disabled = false;
+    }
   }
 
   private renderLog(): void {
@@ -297,6 +356,8 @@ export class App {
       this.syncButtons();
     });
     $('btn-csv').addEventListener('click', () => this.downloadCsv());
+    $('btn-share').addEventListener('click', () => void this.share());
+    window.addEventListener('resize', () => this.renderNight());
     const dialog = $<HTMLDialogElement>('confirm-reset');
     $('btn-reset').addEventListener('click', () => {
       // A close by Esc or the back gesture keeps the old returnValue, so clear it first.

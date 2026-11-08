@@ -220,3 +220,57 @@ export class Spectrogram {
     this.ctx.putImageData(img, w - cols, 0);
   }
 }
+
+/**
+ * The night in bars: crackers per bin, coloured by the loudest moment in it, with
+ * the 8-10 pm window shaded and the hours marked.
+ */
+export function drawNight(canvas: HTMLCanvasElement, bins: readonly { start: number; crackers: number; loudest: number | null }[], offset: number): void {
+  const ctx = fit(canvas);
+  const { width: w, height: h } = canvas;
+  const dpr = w / Math.max(1, canvas.clientWidth);
+  ctx.clearRect(0, 0, w, h);
+  if (!bins.length) return;
+  const axis = 18 * dpr;
+  const top = 14 * dpr;
+  const plotH = h - axis - top;
+  const bw = w / bins.length;
+  const max = Math.max(5, ...bins.map((b) => b.crackers));
+
+  // The 8-10 pm window.
+  ctx.fillStyle = 'rgba(143, 180, 255, 0.12)';
+  bins.forEach((b, i) => {
+    const hr = new Date(b.start).getHours();
+    if (hr >= 20 && hr < 22) ctx.fillRect(i * bw, top, bw, plotH);
+  });
+
+  bins.forEach((b, i) => {
+    if (!b.crackers) return;
+    const bh = Math.max(2 * dpr, (b.crackers / max) * plotH);
+    ctx.fillStyle = b.loudest === null ? '#9a8f88' : bandFor(b.loudest + offset).colour;
+    const x = i * bw + bw * 0.15;
+    ctx.beginPath();
+    ctx.roundRect(x, top + plotH - bh, bw * 0.7, bh, Math.min(4 * dpr, bw * 0.2));
+    ctx.fill();
+  });
+
+  // Hour labels and the busiest bin's count.
+  ctx.fillStyle = 'rgba(246, 239, 228, 0.6)';
+  ctx.font = `600 ${11 * dpr}px Manrope Variable, system-ui, sans-serif`;
+  ctx.textBaseline = 'alphabetic';
+  bins.forEach((b, i) => {
+    const d = new Date(b.start);
+    if (d.getMinutes() === 0 || (i === 0 && bins.length < 7)) {
+      ctx.textAlign = i === 0 ? 'left' : 'center';
+      ctx.fillText(d.toLocaleTimeString([], { hour: 'numeric', minute: bins.length < 7 ? '2-digit' : undefined }), i * bw + (i === 0 ? 2 * dpr : 0), h - 4 * dpr);
+    }
+  });
+  const busiest = bins.reduce((m, b, i) => (b.crackers > bins[m]!.crackers ? i : m), 0);
+  const top1 = bins[busiest]!;
+  if (top1.crackers) {
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#f6efe4';
+    const bh = (top1.crackers / max) * plotH;
+    ctx.fillText(String(top1.crackers), Math.min(w - 12 * dpr, Math.max(12 * dpr, busiest * bw + bw / 2)), Math.max(11 * dpr, top + plotH - bh - 4 * dpr));
+  }
+}

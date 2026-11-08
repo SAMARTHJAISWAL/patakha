@@ -1,4 +1,4 @@
-# patakha · पटाखा
+# patakha पटाखा
 
 [![Live demo](https://img.shields.io/badge/live%20demo-samarthjaiswal.github.io%2Fpatakha-ffb23f)](https://samarthjaiswal.github.io/patakha/)
 [![CI](https://github.com/SAMARTHJAISWAL/patakha/actions/workflows/ci.yml/badge.svg)](https://github.com/SAMARTHJAISWAL/patakha/actions/workflows/ci.yml)
@@ -25,11 +25,14 @@ Everything runs on your phone. Audio is analysed as it arrives and never recorde
 | **Average** | The energy average over the whole night (LAeq), the number noise rules use. |
 | **Above 85 dB** | Time spent above the level where hours a day start to damage hearing. |
 | **Outside 8–10 pm** | Crackers heard outside the window the Supreme Court set for Diwali in 2018. |
+| **Noise dose** | How much of a safe day's sound exposure the night has used, at the phone's position. It follows NIOSH: 85 dB(A) for 8 hours is 100%, and every 3 dB louder halves the safe time. |
 
 Below the numbers:
 - **The last 90 seconds** as a level chart, with a mark for every bang.
 - **A live spectrogram.** A bang is a bright vertical streak; a rocket's whistle is a rising line.
+- **Your night, 10 minutes at a time:** a bar for every 10 minutes, coloured by the loudest moment in it, with the 8–10 pm window shaded and the busiest stretch named.
 - **Every burst, newest first,** with its time, kind and peak level. The list downloads as CSV.
+- **Share my night** makes a portrait summary card (1080 × 1350): the crackers count, loudest, average, noise dose and the night's bars. On a phone it opens the share sheet; on a computer it downloads.
 
 The night's count survives a reload. The screen stays awake while measuring, where the browser allows it.
 
@@ -80,7 +83,7 @@ Detection works on levels relative to full scale, so calibration doesn't change 
 
 ## Testing
 
-`npm test` runs 30 tests in about a second:
+`npm test` runs 36 tests in about a second:
 
 - **A-weighting:** the filter's response at 44.1 and 48 kHz against the IEC 61672 table, and a time-domain check with sine waves through the filter.
 - **The detector on synthetic levels:**
@@ -103,23 +106,27 @@ Detection works on levels relative to full scale, so calibration doesn't change 
   - corrupt or impossible saved data is rejected;
   - a generator starting is not a rocket;
   - after a restart the background is learned afresh.
+- **Noise dose and the night chart:** the NIOSH arithmetic (100% for 8 hours at 85 dB(A), doubling every 3 dB), and 10-minute bins aligned to the clock that count every bang in a ladi.
 
-`scripts/e2e.py` (Python Playwright) checks 31 things in a real browser:
+`scripts/e2e.py` (Python Playwright) checks 44 things in a real browser:
 
 - **The demo night:**
   - the gauge, counting, ladi recognition and the burst list;
-  - turning on the sound;
+  - turning the sound on and off again;
+  - the noise dose, the night chart's bars, and a 1080 × 1350 share picture;
   - the demo is marked as one, and stopping it leaves tonight's real count untouched and unsaved.
 - **A fake microphone.** Chromium is given a WAV file that the script writes itself, independent of the app's code: a quiet street, five single bangs and a 20-bang ladi at known times.
   - The app must find them all through the real microphone path, and the ladi's count must be within 3.
   - A reload keeps the count, and the CSV has one row per burst in local time.
+  - Switching to the demo and back to the microphone shows the right count each time.
   - Two starts fired at once still give one audio stream (time advances at the real rate).
   - Closing the reset dialog with Esc keeps the count; confirming clears it.
   - A refused microphone permission produces a helpful message.
 - **The page:**
-  - the title links to this repo;
+  - the title reads "patakha पटाखा", is the page's only link to GitHub, and opens this repo;
+  - the Rozha One and Manrope fonts load;
   - on a phone there is no sideways scrolling and everything is big enough to tap;
-  - calibration works;
+  - calibration works, Back to default resets it, and the setting survives a reload;
   - no console errors.
 
 ## Project layout
@@ -141,7 +148,7 @@ tests/            Vitest: A-weighting, detector, the whole pipeline
 scripts/          e2e.py and capture.py (Python Playwright)
 ```
 
-The production bundle is 24 KB of JavaScript (9 KB gzipped) plus a 2 KB worklet, with Barlow and Mukta fonts bundled through Fontsource. It has no runtime dependencies.
+The production bundle is 32 KB of JavaScript (12 KB gzipped) plus a 2 KB worklet, with the Manrope and Rozha One fonts bundled through Fontsource. It has no runtime dependencies.
 
 ## Running locally
 

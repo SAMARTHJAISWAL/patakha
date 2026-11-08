@@ -1,9 +1,6 @@
-import '@fontsource/barlow/latin-400.css';
-import '@fontsource/barlow/latin-500.css';
-import '@fontsource/barlow/latin-600.css';
-import '@fontsource/barlow-condensed/latin-600.css';
-import '@fontsource/barlow-condensed/latin-700.css';
-import '@fontsource/mukta/devanagari-600.css';
+import '@fontsource-variable/manrope/wght.css';
+import '@fontsource/rozha-one/latin-400.css';
+import '@fontsource/rozha-one/devanagari-400.css';
 import './style.css';
 import { App } from './ui/app';
 
