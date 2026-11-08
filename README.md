@@ -123,7 +123,7 @@ Detection works on levels relative to full scale, so calibration doesn't change 
   - Closing the reset dialog with Esc keeps the count; confirming clears it.
   - A refused microphone permission produces a helpful message.
 - **The page:**
-  - the title reads "patakha पटाखा", is the page's only link to GitHub, and opens this repo;
+  - the title reads "patakha पटाखा", is plain text, and nothing on the page links away to GitHub;
   - the Rozha One and Manrope fonts load;
   - on a phone there is no sideways scrolling and everything is big enough to tap;
   - calibration works, Back to default resets it, and the setting survives a reload;

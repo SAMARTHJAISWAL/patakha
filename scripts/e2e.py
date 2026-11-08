@@ -193,17 +193,17 @@ def part_mic(p) -> None:
 def part_page(p) -> None:
     browser = p.chromium.launch(headless=True, args=GPU, channel='chromium')
     page, errors = open_app(browser, viewport={'width': 1280, 'height': 900})
-    page_errors = list(errors)  # before leaving for GitHub, whose own console is not ours
-    check('page: the title reads "patakha पटाखा", English first', page.locator('a.brand').inner_text().split() [:2] == ['patakha', 'पटाखा'], page.locator('a.brand').inner_text())
-    links = page.evaluate("[...document.querySelectorAll('a[href*=\"github.com\"]')].map(a => a.className)")
-    check('page: the title is the only link to GitHub', links == ['brand'], links)
-    fonts = page.evaluate("document.fonts.ready.then(() => [document.fonts.check('400 20px \"Rozha One\"', 'पटाखा'), document.fonts.check('800 20px \"Manrope Variable\"')])")
+    page_errors = list(errors)
+    check('page: the title reads "patakha पटाखा", English first', page.locator('.brand').inner_text().split()[:2] == ['patakha', 'पटाखा'], page.locator('.brand').inner_text())
+    check('page: the title is not a link', page.evaluate("document.querySelector('.brand').closest('a') === null"))
+    links = page.evaluate("[...document.querySelectorAll('a')].map(a => a.href).filter(h => h.includes('github.com'))")
+    check('page: nothing on the page links to GitHub', links == [], links)
+    fonts = page.evaluate('''document.fonts.ready.then(() => [document.fonts.check('400 20px "Rozha One"', 'पटाखा'), document.fonts.check('800 20px "Manrope Variable"')])''')
     check('page: the Rozha One and Manrope fonts load', fonts == [True, True], fonts)
-    brand = page.locator('a.brand')
-    check('page: the title links to the repo', brand.get_attribute('href') == 'https://github.com/SAMARTHJAISWAL/patakha')
-    with page.expect_navigation():
-        brand.click()
-    check('page: clicking the title opens the repo', page.url.rstrip('/') == 'https://github.com/SAMARTHJAISWAL/patakha', page.url)
+    url_before = page.url
+    page.locator('.brand').click()
+    page.wait_for_timeout(500)
+    check('page: clicking the title stays on the page', page.url == url_before, page.url)
     m, errs = open_app(browser, viewport={'width': 390, 'height': 844}, device_scale_factor=2, is_mobile=True, has_touch=True)
     check('phone: no sideways scrolling', m.evaluate('document.documentElement.scrollWidth - innerWidth') == 0)
     small = m.evaluate("[...document.querySelectorAll('button, summary')].filter(b => b.offsetParent && b.getBoundingClientRect().height < 32).map(b => b.textContent.trim())")
