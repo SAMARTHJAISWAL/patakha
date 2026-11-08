@@ -65,6 +65,10 @@ export class App {
   private starting = false;
   private offset = DEFAULT_OFFSET;
   private wakePending: Promise<void> | null = null;
+  /** When the last audio block arrived (performance.now()). */
+  private lastBlocks = 0;
+  /** Wall-clock time a pause began, or 0 if not paused. */
+  private pausedSince = 0;
   private engine: AudioEngine | null = null;
   private source: Source | null = null;
   private readonly gauge: (db: number | null, max: number | null) => void;
@@ -95,8 +99,13 @@ export class App {
     }, 10_000);
     window.addEventListener('pagehide', () => this.save());
     document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible' && this.source) void this.keepAwake();
+      if (document.visibilityState !== 'visible' || !this.source) return;
+      void this.keepAwake();
+      // Back from a locked screen or another app: start listening again by ourselves if we can.
+      if (this.pausedSince) void this.engine?.resume();
     });
+    // A timer, not the animation loop, so a pause is noticed even while the page is hidden.
+    setInterval(() => this.checkPaused(), 500);
   }
 
   private wireSession(): void {
@@ -138,12 +147,18 @@ export class App {
         this.demoSession.offset = this.offset;
       }
       const target = kind === 'demo' ? this.demoSession! : this.night;
-      this.engine.onBlocks = (blocks) => target.push(blocks);
+      this.engine.onBlocks = (blocks) => {
+        this.lastBlocks = performance.now();
+        target.push(blocks);
+      };
+      this.engine.onStateChange = () => this.checkPaused();
       await this.engine.start(kind);
       this.engine.setDemoSound(kind === 'demo' && this.soundOn);
       this.spectrogram ??= new Spectrogram($<HTMLCanvasElement>('spectrogram'), this.engine.analyser);
       this.show(target);
       this.source = kind;
+      this.lastBlocks = performance.now();
+      this.pausedSince = 0;
       target.resume();
       void this.keepAwake();
     } catch (e) {
@@ -161,6 +176,11 @@ export class App {
   }
 
   stop(): void {
+    // Stopping ends a pause too, without the "measuring again" note.
+    this.pausedSince = 0;
+    $('paused').hidden = true;
+    document.documentElement.classList.remove('is-paused');
+    this.clearNote();
     this.engine?.stop();
     this.session.flush();
     const wasDemo = this.source === 'demo';
@@ -171,6 +191,61 @@ export class App {
     // After the demo, show the real night's numbers again.
     if (wasDemo) this.show(this.night);
     this.syncButtons();
+  }
+
+  /**
+   * Phones pause web audio when the screen locks or a call comes in. Then no blocks
+   * arrive and the audio context is not running: say so, instead of showing a
+   * frozen reading as if all were well.
+   */
+  private checkPaused(): void {
+    if (!this.source || this.starting || !this.engine) return;
+    const stalled = performance.now() - this.lastBlocks > 2000;
+    this.setPaused(!this.engine.running || stalled);
+  }
+
+  private setPaused(paused: boolean): void {
+    if (paused === !!this.pausedSince) return;
+    if (paused) {
+      this.pausedSince = Date.now();
+      // Close any burst in progress: whatever happens next is after a gap.
+      this.session.flush();
+      this.save();
+      $('paused-text').textContent =
+        this.source === 'demo'
+          ? 'The browser stopped the audio, so the demo is not running.'
+          : 'Your phone stopped the microphone (the screen locked, or a call came in), so nothing is being measured.';
+    } else if (this.source) {
+      const gap = Date.now() - this.pausedSince;
+      // Burst times stay on the wall clock, and the background is learned afresh.
+      this.session.resume();
+      this.showNote(`Measuring again. Paused for ${gap < 60_000 ? `${Math.round(gap / 1000)} s` : `${Math.round(gap / 60_000)} min`}.`);
+    }
+    if (!paused) this.pausedSince = 0;
+    $('paused').hidden = !paused;
+    document.documentElement.classList.toggle('is-paused', paused);
+    if (paused) {
+      $('state').textContent = 'Paused';
+      $('level-text').textContent = 'Paused';
+    }
+  }
+
+  private noteTimer = 0;
+
+  private showNote(text: string): void {
+    const hint = $('hint');
+    hint.textContent = text;
+    hint.hidden = false;
+    clearTimeout(this.noteTimer);
+    this.noteTimer = window.setTimeout(() => this.clearNote(), 6000);
+  }
+
+  /** Put the usual hint back (shown unless the microphone is on). */
+  private clearNote(): void {
+    clearTimeout(this.noteTimer);
+    const hint = $('hint');
+    hint.textContent = 'Put your phone down facing the street, screen up. Numbers are approximate: phone microphones are not calibrated instruments.';
+    hint.hidden = this.source === 'mic';
   }
 
   /** Keep the screen on while measuring, where the browser allows it. */
@@ -196,7 +271,7 @@ export class App {
   private frame(): void {
     requestAnimationFrame(() => this.frame());
     const s = this.session;
-    const listening = this.source !== null;
+    const listening = this.source !== null && !this.pausedSince;
     if (listening) {
       const db = s.meter.fast;
       this.gauge(db, Number.isFinite(s.meter.maxFast) ? s.meter.maxFast : null);
@@ -357,6 +432,12 @@ export class App {
     });
     $('btn-csv').addEventListener('click', () => this.downloadCsv());
     $('btn-share').addEventListener('click', () => void this.share());
+    $('btn-resume').addEventListener('click', async () => {
+      if (!this.engine || !(await this.engine.resume())) {
+        this.showError('The audio could not restart. Press Stop, then Start listening.');
+      }
+      this.checkPaused();
+    });
     window.addEventListener('resize', () => this.renderNight());
     const dialog = $<HTMLDialogElement>('confirm-reset');
     $('btn-reset').addEventListener('click', () => {

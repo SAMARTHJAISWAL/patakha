@@ -35,6 +35,10 @@
           <div class="flash" id="flash" aria-hidden="true"></div>
         </div>
         <p class="sr-only" id="level-text" aria-live="off">Not listening</p>
+        <div class="paused" id="paused" role="alert" hidden>
+          <p><strong>Paused.</strong> <span id="paused-text">Your phone stopped the microphone, so nothing is being measured.</span></p>
+          <button type="button" class="btn primary" id="btn-resume">Carry on</button>
+        </div>
         <div class="controls">
           <button type="button" class="btn primary" id="btn-listen">Start listening</button>
           <button type="button" class="btn" id="btn-demo">Play the demo night</button>

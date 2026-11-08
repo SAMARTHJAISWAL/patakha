@@ -36,6 +36,8 @@ Below the numbers:
 
 The night's count survives a reload. The screen stays awake while measuring, where the browser allows it.
 
+**If the phone pauses the microphone** (the screen locks, or a call comes in, as iPhones do), patakha notices within two seconds. It shows **Paused** with a **Carry on** button instead of a frozen reading, and resumes by itself when you come back to the page. Afterwards a note says how long it was paused, burst times stay on the real clock, and the background is learned afresh.
+
 <p align="center"><img src="docs/phone.png" alt="patakha on a phone: the gauge, the start buttons, and tonight's totals" width="300"></p>
 
 ## How it works
@@ -108,12 +110,17 @@ Detection works on levels relative to full scale, so calibration doesn't change 
   - after a restart the background is learned afresh.
 - **Noise dose and the night chart:** the NIOSH arithmetic (100% for 8 hours at 85 dB(A), doubling every 3 dB), and 10-minute bins aligned to the clock that count every bang in a ladi.
 
-`scripts/e2e.py` (Python Playwright) checks 44 things in a real browser:
+`scripts/e2e.py` (Python Playwright) checks 52 things in a real browser:
 
 - **The demo night:**
   - the gauge, counting, ladi recognition and the burst list;
   - turning the sound on and off again;
   - the noise dose, the night chart's bars, and a 1080 × 1350 share picture;
+  - a pause:
+    - it is announced, and nothing is measured meanwhile;
+    - Carry on and returning to the page both resume it, with a note of how long it was paused;
+    - bursts afterwards carry the right clock time;
+    - Stop while paused leaves nothing behind;
   - the demo is marked as one, and stopping it leaves tonight's real count untouched and unsaved.
 - **A fake microphone.** Chromium is given a WAV file that the script writes itself, independent of the app's code: a quiet street, five single bangs and a 20-bang ladi at known times.
   - The app must find them all through the real microphone path, and the ladi's count must be within 3.

@@ -35,6 +35,8 @@ export class AudioEngine {
   onBlocks: ((blocks: Block[]) => void) | null = null;
   /** Called if the microphone stops on its own (unplugged, permission revoked). */
   onEnded: (() => void) | null = null;
+  /** Called when the browser suspends or resumes audio (screen lock, a phone call). */
+  onStateChange: (() => void) | null = null;
 
   private constructor(ctx: AudioContext) {
     this.ctx = ctx;
@@ -48,6 +50,22 @@ export class AudioEngine {
     this.speaker = ctx.createGain();
     this.speaker.gain.value = 0;
     this.speaker.connect(ctx.destination);
+    ctx.addEventListener('statechange', () => this.onStateChange?.());
+  }
+
+  /** True while audio is flowing. iOS reports 'interrupted' during calls. */
+  get running(): boolean {
+    return this.ctx.state === 'running';
+  }
+
+  /** Try to restart audio after the browser paused it (needs a tap on some phones). */
+  async resume(): Promise<boolean> {
+    try {
+      await this.ctx.resume();
+    } catch {
+      /* not allowed without a tap: the Carry on button will do it */
+    }
+    return this.running;
   }
 
   static async create(): Promise<AudioEngine> {
