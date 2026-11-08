@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>patakha · how loud is your Diwali?</title>
+    <meta name="description" content="A Diwali cracker noise meter that runs on your phone: live decibels, a spectrogram, and every bang, ladi and rocket counted as it happens. Audio never leaves your device." />
+    <meta name="theme-color" content="#0b0a14" />
+    <meta property="og:title" content="patakha · how loud is your Diwali?" />
+    <meta property="og:description" content="Your phone as a cracker noise meter: live decibels, a spectrogram, and every bang, ladi and rocket counted as it happens." />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://samarthjaiswal.github.io/patakha/og.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+  </head>
+  <body>
+    <header class="top">
+      <a class="brand" href="https://github.com/SAMARTHJAISWAL/patakha" title="patakha on GitHub">
+        <span class="deva" lang="hi">पटाखा</span>
+        <span class="latin">patakha</span>
+        <svg class="gh" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        <span class="sr-only">(source on GitHub)</span>
+      </a>
+      <p class="tagline">How loud is your Diwali?</p>
+      <p class="private"><span aria-hidden="true">●</span> Audio never leaves your phone</p>
+    </header>
+
+    <main class="grid">
+      <section class="card meter" aria-labelledby="meter-title">
+        <h2 id="meter-title" class="sr-only">Sound level</h2>
+        <div class="gauge-wrap">
+          <svg id="gauge" class="gauge" viewBox="0 0 320 190" role="img" aria-labelledby="level-text"></svg>
+          <div class="readout">
+            <div class="value"><span id="level">--</span><span class="unit">dB(A)</span></div>
+            <p class="state" id="state">Not listening</p>
+          </div>
+          <div class="flash" id="flash" aria-hidden="true"></div>
+        </div>
+        <p class="sr-only" id="level-text" aria-live="off">Not listening</p>
+        <div class="controls">
+          <button type="button" class="btn primary" id="btn-listen">Start listening</button>
+          <button type="button" class="btn" id="btn-demo">Play the demo night</button>
+          <button type="button" class="btn toggle" id="btn-sound" aria-pressed="false" hidden>Sound on</button>
+          <button type="button" class="btn" id="btn-stop" hidden>Stop</button>
+        </div>
+        <p class="hint" id="hint">Put your phone down facing the street, screen up. Numbers are approximate: phone microphones are not calibrated instruments.</p>
+        <p class="error" id="error" role="alert" hidden></p>
+      </section>
+
+      <section class="card stats" aria-labelledby="stats-title">
+        <div class="card-head">
+          <h2 id="stats-title">Tonight so far</h2>
+          <span class="badge" id="demo-badge" hidden>Demo · not saved</span>
+          <span class="since" id="since"></span>
+        </div>
+        <dl class="tiles">
+          <div class="tile big"><dt>Crackers heard</dt><dd id="s-crackers">0</dd></div>
+          <div class="tile"><dt>Ladis</dt><dd id="s-ladis">0</dd></div>
+          <div class="tile"><dt>Rockets &amp; anaar</dt><dd id="s-long">0</dd></div>
+          <div class="tile"><dt>Loudest</dt><dd><span id="s-max">--</span><small id="s-max-at"></small></dd></div>
+          <div class="tile"><dt>Average</dt><dd id="s-leq">--</dd></div>
+          <div class="tile"><dt>Above 85 dB</dt><dd id="s-85">0 min</dd></div>
+          <div class="tile"><dt>Outside 8–10 pm</dt><dd id="s-outside">0</dd></div>
+        </dl>
+      </section>
+
+      <section class="card live" aria-labelledby="live-title">
+        <div class="card-head">
+          <h2 id="live-title">Last 90 seconds</h2>
+          <ul class="key">
+            <li><span class="k-level"></span>level</li>
+            <li><span class="k-onset"></span>bang</li>
+          </ul>
+        </div>
+        <canvas id="trace" class="trace" aria-label="Sound level over the last 90 seconds, with a mark for every bang" role="img"></canvas>
+        <div class="spec">
+          <canvas id="spectrogram" class="spectrogram" aria-label="Spectrogram of the last few seconds: frequency from 60 Hz at the bottom to 12 kHz at the top, brighter is louder" role="img"></canvas>
+          <div class="spec-axis" aria-hidden="true"><span>12 kHz</span><span>1 kHz</span><span>100 Hz</span></div>
+        </div>
+        <p class="spec-note">Spectrogram of the last few seconds. A bang is a bright vertical streak; a rocket's whistle is a rising line.</p>
+      </section>
+
+      <section class="card log" aria-labelledby="log-title">
+        <div class="card-head">
+          <h2 id="log-title">Every burst</h2>
+          <div class="log-actions">
+            <button type="button" class="btn small" id="btn-csv">Download CSV</button>
+            <button type="button" class="btn small danger" id="btn-reset">Reset</button>
+          </div>
+        </div>
+        <ol class="bursts" id="bursts" aria-live="polite"></ol>
+        <p class="empty" id="empty">Nothing yet. Bangs, ladis and rockets appear here as they happen.</p>
+      </section>
+
+      <section class="card about" aria-labelledby="about-title">
+        <h2 id="about-title">What the numbers mean</h2>
+        <ul class="scale" id="scale"></ul>
+        <p>Firecrackers in India must not be louder than <strong>125 dB(AI)</strong>, measured 4 metres from where they burst (Environment (Protection) Rules, 1986). This meter reads dB(A) wherever your phone is, so the limit on the gauge is a reference point, not a verdict on any one cracker. In 2018 the Supreme Court limited Diwali crackers to <strong>8 to 10 pm</strong>; states set their own rules on top of that.</p>
+        <details class="calibrate">
+          <summary>Calibrate</summary>
+          <p>Phone microphones differ by several decibels. If you have a sound level meter, hold both side by side in steady noise and slide until the numbers match. Do it before you start: time above 85 dB is counted with the calibration in force at the moment.</p>
+          <label class="slider">
+            <span>Offset</span>
+            <input type="range" id="offset" min="90" max="150" step="0.5" />
+            <output id="offset-out" for="offset"></output>
+          </label>
+          <button type="button" class="btn small" id="btn-offset-reset">Back to default</button>
+        </details>
+      </section>
+    </main>
+
+    <dialog id="confirm-reset" aria-labelledby="reset-title">
+      <form method="dialog">
+        <h2 id="reset-title">Start a new count?</h2>
+        <p>This clears tonight's numbers and the list of bursts on this phone.</p>
+        <div class="dialog-actions">
+          <button class="btn danger" value="reset">Clear and start again</button>
+          <button class="btn" value="cancel" autofocus>Keep them</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
